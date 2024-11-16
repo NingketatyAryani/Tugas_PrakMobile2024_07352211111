@@ -1,0 +1,118 @@
+import 'dart:async';
+
+// Enum untuk peran pengguna, 
+enum Role { Admin, Customer }
+//EnumRole : Digunakan itu digunakan untuk mendefinisikan peran pengguna (Admin atau Pelanggan)
+
+
+
+class Product {
+  final String productName; 
+  final double price; 
+  bool inStock; 
+
+ 
+  Product({
+    required this.productName,
+    required this.price,
+    this.inStock = true, 
+  });
+}
+
+
+class User {
+  final String name; 
+  final int age; 
+  late List<Product> products; 
+  Role? role; 
+
+  
+  User({
+    required this.name,
+    required this.age,
+    required this.role,
+  }) {
+    products = []; 
+  }
+}
+
+
+class AdminUser extends User {
+  AdminUser({required String name, required int age})
+      : super(name: name, age: age, role: Role.Admin);
+
+  
+  void addProduct(Product product, Map<String, Product> productCatalog) {
+    try {
+      if (!product.inStock) {
+        // Jika produk tidak tersedia maka akan dilemparkan exception
+        throw Exception('Product is out of stock');
+      }
+
+      final Set<Product> uniqueProducts = products.toSet();
+      uniqueProducts.add(product);
+      products = uniqueProducts.toList();
+
+
+      productCatalog[product.productName] = product;
+      print('Product ${product.productName} added successfully.');
+    } on Exception catch (e) {
+      // Menangkap exception jika terjadi error
+      print('Error: ${e.toString()}');
+    }
+  }
+
+
+  void removeProduct(String productName) {
+    products.removeWhere((product) => product.productName == productName);
+    print('Product $productName removed successfully.');
+  }
+}
+
+class CustomerUser extends User {
+  CustomerUser({required String name, required int age})
+      : super(name: name, age: age, role: Role.Customer);
+
+  void viewProducts() {
+    if (products.isEmpty) {
+      // Jika tidak ada produk, tampilkan pesan
+      print('No products available.');
+    } else {
+      // Jika ada produk, tampilkan daftar produk
+      print('Product List:');
+      for (var product in products) {
+        print('${product.productName} - \$${product.price}');
+      }
+    }
+  }
+}
+
+// Di sini Fungsi asynchronous untuk mengambil detail produk dari server
+Future<Product> fetchProductDetails(String productName) async {
+  print('Fetching product details for $productName...');
+  await Future.delayed(Duration(seconds: 2)); 
+  return Product(productName: productName, price: 50.0, inStock: true);
+}
+
+// Fungsi utama
+void main() async {
+  // Inisialisasi katalog produk sebagai Map
+  var productCatalog = <String, Product>{};
+
+  AdminUser admin = AdminUser(name: 'Admin', age: 30);
+
+  CustomerUser customer = CustomerUser(name: 'Customer', age: 25);
+
+  var fetchedProduct = await fetchProductDetails('Laptop');
+  admin.addProduct(fetchedProduct, productCatalog); 
+
+ 
+  customer.products = admin.products; 
+  customer.viewProducts();
+
+  // AdminUser menghapus produk dari katalog
+  admin.removeProduct('Laptop');
+
+  // CustomerUser mencoba melihat daftar produk setelah penghapusan
+  customer.viewProducts();
+}
