@@ -1,0 +1,141 @@
+import 'dart:collection';
+import 'dart:math';
+
+// Enum untuk fase proyek
+enum FaseProyek { Perencanaan, Pengembangan, Evaluasi }
+
+
+class Produk {
+  final String namaProduk;
+  final int harga;
+  final String kategori;
+
+  Produk(this.namaProduk, this.harga, this.kategori) {
+    if (kategori == 'NetworkAutomation' && harga < 200000) {
+      throw ArgumentError(
+          'Produk NetworkAutomation harus memiliki harga minimal 200.000');
+    }
+    if (kategori == 'DataManagement' && harga >= 200000) {
+      throw ArgumentError(
+          'Produk DataManagement harus memiliki harga di bawah 200.000');
+    }
+  }
+
+  double getDiskon(int jumlahTerjual) {
+    if (kategori == 'NetworkAutomation' && jumlahTerjual > 50) {
+      double hargaDiskon = harga * 0.85; // Diskon 15%
+      return max(hargaDiskon, 200000); // Harga minimal tetap 200.000
+    }
+    return harga.toDouble();
+  }
+}
+
+
+mixin Kinerja {
+  DateTime? _lastUpdate;
+  double produktivitas = 0;
+
+  void updateProduktivitas(double perubahan) {
+    final sekarang = DateTime.now();
+    if (_lastUpdate != null && sekarang.difference(_lastUpdate!).inDays < 30) {
+      throw Exception('Produktivitas hanya bisa diperbarui setiap 30 hari.');
+    }
+
+    produktivitas += perubahan;
+    if (produktivitas < 0) produktivitas = 0;
+    if (produktivitas > 100) produktivitas = 100;
+
+    _lastUpdate = sekarang;
+  }
+}
+
+
+abstract class Karyawan with Kinerja {
+  String nama;
+  int umur;
+  String peran;
+
+  Karyawan(this.nama, {required this.umur, required this.peran}) {
+    if (peran == 'Manager' && produktivitas < 85) {
+      throw Exception('Manager harus memiliki produktivitas minimal 85.');
+    }
+  }
+}
+
+
+class KaryawanTetap extends Karyawan {
+  KaryawanTetap(String nama, {required int umur, required String peran})
+      : super(nama, umur: umur, peran: peran);
+}
+
+
+class KaryawanKontrak extends Karyawan {
+  KaryawanKontrak(String nama, {required int umur, required String peran})
+      : super(nama, umur: umur, peran: peran);
+}
+
+
+class Proyek {
+  FaseProyek fase = FaseProyek.Perencanaan;
+  final List<Karyawan> _tim = [];
+  final DateTime tanggalMulai = DateTime.now();
+
+  UnmodifiableListView<Karyawan> get tim => UnmodifiableListView(_tim);
+
+  void tambahKaryawan(Karyawan karyawan) {
+    if (_tim.length >= 20) {
+      throw Exception('Maksimal 20 karyawan aktif dalam satu proyek.');
+    }
+    _tim.add(karyawan);
+  }
+
+  void hapusKaryawan(Karyawan karyawan) {
+    _tim.remove(karyawan);
+  }
+
+  void keFaseBerikutnya() {
+    if (fase == FaseProyek.Perencanaan && _tim.length < 5) {
+      throw Exception(
+          'Beralih ke fase Pengembangan membutuhkan minimal 5 karyawan aktif.');
+    }
+    if (fase == FaseProyek.Pengembangan &&
+        DateTime.now().difference(tanggalMulai).inDays <= 45) {
+      throw Exception(
+          'Beralih ke fase Evaluasi membutuhkan proyek berjalan selama lebih dari 45 hari.');
+    }
+
+    if (fase == FaseProyek.Perencanaan) {
+      fase = FaseProyek.Pengembangan;
+    } else if (fase == FaseProyek.Pengembangan) {
+      fase = FaseProyek.Evaluasi;
+    }
+  }
+}
+
+void main() {
+  // Membuat produk
+  var produk1 = Produk('Data Storage', 150000, 'DataManagement');
+  var produk2 = Produk('Network Router', 300000, 'NetworkAutomation');
+
+  print('Harga produk1: ${produk1.harga}');
+  print('Harga diskon produk2 setelah terjual 60 unit: ${produk2.getDiskon(60)}');
+
+  // Membuat karyawan
+  var karyawan1 = KaryawanTetap('Alice', umur: 30, peran: 'Developer');
+  var karyawan2 = KaryawanKontrak('Bob', umur: 25, peran: 'NetworkEngineer');
+  karyawan1.updateProduktivitas(90);
+  karyawan2.updateProduktivitas(80);
+
+  // Membuat proyek
+  var proyek = Proyek();
+  proyek.tambahKaryawan(karyawan1);
+  proyek.tambahKaryawan(karyawan2);
+
+  try {
+    proyek.keFaseBerikutnya();
+  } catch (e) {
+    print(e);
+  }
+
+  print('Fase proyek saat ini: ${proyek.fase}');
+}
